@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatFlow - سیستەمی چات</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="auth-page">
+
+  <!-- Auth Container -->
+  <div class="auth-container" id="authContainer">
+    <!-- Background Effects -->
+    <div class="auth-bg">
+      <div class="bg-orb orb-1"></div>
+      <div class="bg-orb orb-2"></div>
+      <div class="bg-orb orb-3"></div>
+    </div>
+
+    <!-- Auth Card -->
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-icon">💬</div>
+        <h1>ChatFlow</h1>
+        <p>سیستەمی چاتی بێهەمتا</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="tab-btn active" onclick="switchTab('login')" id="loginTab">چوونەژوورەوە</button>
+        <button class="tab-btn" onclick="switchTab('register')" id="registerTab">تۆمارکردن</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>یوزەرنەیم</label>
+          <input type="text" id="loginUsername" placeholder="یوزەرنەیمەکەت داخڵ بکە" required>
+        </div>
+        <div class="form-group">
+          <label>پاسوۆرد</label>
+          <div class="password-input">
+            <input type="password" id="loginPassword" placeholder="پاسوۆردەکەت داخڵ بکە" required>
+            <button type="button" onclick="togglePassword('loginPassword')">👁</button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="loginBtn">
+          <span>چوونەژوورەوە</span>
+        </button>
+        <p id="loginError" class="form-error"></p>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>ناوی تەواو</label>
+          <input type="text" id="regFullName" placeholder="ناوی تەواوت بنووسە" required>
+        </div>
+        <div class="form-group">
+          <label>یوزەرنەیم</label>
+          <input type="text" id="regUsername" placeholder="یوزەرنەیم هەڵبژێرە" required>
+        </div>
+        <div class="form-group">
+          <label>ئیمەیڵ</label>
+          <input type="email" id="regEmail" placeholder="ئیمەیڵەکەت داخڵ بکە" required>
+        </div>
+        <div class="form-group">
+          <label>پاسوۆرد</label>
+          <div class="password-input">
+            <input type="password" id="regPassword" placeholder="پاسوۆردێکی بەهێز دیاری بکە" required>
+            <button type="button" onclick="togglePassword('regPassword')">👁</button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="registerBtn">
+          <span>تۆمارکردن</span>
+        </button>
+        <p id="registerError" class="form-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Chat Application -->
+  <div class="chat-app hidden" id="chatApp">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Sidebar Header -->
+      <div class="sidebar-header">
+        <div class="app-logo">
+          <span class="logo-emoji">💬</span>
+          <span class="logo-text">ChatFlow</span>
+        </div>
+        <button class="icon-btn" onclick="toggleSidebar()" title="داخستنی مینیو">✕</button>
+      </div>
+
+      <!-- Current User Info -->
+      <div class="current-user" id="currentUserInfo">
+        <div class="user-avatar-wrap">
+          <div class="user-avatar" id="sidebarAvatar">؟</div>
+          <div class="online-dot"></div>
+        </div>
+        <div class="user-details">
+          <div class="user-name" id="sidebarName">...</div>
+          <div class="user-status">دەستەلێکردوو</div>
+        </div>
+        <button class="icon-btn logout-btn" onclick="logout()" title="دەرچوون">🚪</button>
+      </div>
+
+      <!-- Search -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="گەڕان لە چاتەکان..." oninput="filterChats(this.value)">
+      </div>
+
+      <!-- Chat List -->
+      <div class="chat-list-header">
+        <span>چاتەکان</span>
+        <div class="online-badge" id="onlineBadge">0 دەستەلێکردوو</div>
+      </div>
+      
+      <div class="chat-list" id="chatList">
+        <!-- Group Chat -->
+        <div class="chat-item active" id="groupChatItem" onclick="openGroupChat()">
+          <div class="chat-avatar group-avatar">👥</div>
+          <div class="chat-info">
+            <div class="chat-name">چاتی گرووپ</div>
+            <div class="chat-preview" id="groupPreview">بەخێربێیت بۆ گرووپ</div>
+          </div>
+          <div class="chat-meta">
+            <span class="unread-badge hidden" id="groupUnread">0</span>
+          </div>
+        </div>
+        
+        <!-- Users will be dynamically added here -->
+        <div id="usersList"></div>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main" id="chatMain">
+      
+      <!-- Mobile Header -->
+      <div class="mobile-header">
+        <button class="icon-btn" onclick="toggleSidebar()">☰</button>
+        <span class="mobile-title">ChatFlow</span>
+        <div class="w-8"></div>
+      </div>
+
+      <!-- Chat Header -->
+      <div class="chat-header" id="chatHeader">
+        <div class="chat-header-info">
+          <div class="chat-header-avatar" id="headerAvatar">👥</div>
+          <div>
+            <div class="chat-header-name" id="headerName">چاتی گرووپ</div>
+            <div class="chat-header-status" id="headerStatus">چاتی گشتی</div>
+          </div>
+        </div>
+        <div class="chat-header-actions">
+          <button class="icon-btn" onclick="loadMoreMessages()" title="مەسەجی کۆنتر">⬆</button>
+        </div>
+      </div>
+
+      <!-- Messages Area -->
+      <div class="messages-area" id="messagesArea">
+        <div class="welcome-msg">
+          <div class="welcome-icon">💬</div>
+          <h3>بەخێربێیت بۆ ChatFlow</h3>
+          <p>گرووپ یان کەسێک هەڵبژێرە بۆ دەستپێکردنی چات</p>
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div class="typing-indicator hidden" id="typingIndicator">
+        <span id="typingText">...دەنووسێت</span>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+
+      <!-- Message Input Area -->
+      <div class="message-input-area" id="messageInputArea">
+        <!-- File Preview -->
+        <div class="file-preview hidden" id="filePreview">
+          <div class="file-preview-content" id="filePreviewContent"></div>
+          <button class="remove-file-btn" onclick="removeSelectedFile()">✕</button>
+        </div>
+        
+        <div class="input-row">
+          <!-- File Upload -->
+          <label class="attach-btn" title="پرکردنی فایل">
+            <span>📎</span>
+            <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar" 
+                   onchange="handleFileSelect(this)" style="display:none">
+          </label>
+          
+          <!-- Text Input -->
+          <div class="text-input-wrap">
+            <textarea id="messageInput" placeholder="مەسەجەکەت بنووسە..." 
+                      onkeydown="handleKeyDown(event)" 
+                      oninput="handleTyping(this)"
+                      rows="1"></textarea>
+          </div>
+          
+          <!-- Send Button -->
+          <button class="send-btn" onclick="sendMessage()" id="sendBtn">
+            <span>⬅</span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Image Lightbox -->
+    <div class="lightbox hidden" id="lightbox" onclick="closeLightbox()">
+      <img id="lightboxImg" src="" alt="">
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    </div>
+
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/chat.js"></script>
+</body>
+</html>

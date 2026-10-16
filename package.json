@@ -1,0 +1,63 @@
+{
+  "name": "chatflow",
+  "version": "1.0.0",
+  "description": "ChatFlow - Real-time Messenger with SQL Server",
+  "main": "electron.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "app": "electron .",
+    "build:win": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.chatflow.messenger",
+    "productName": "ChatFlow Messenger",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ChatFlow Messenger",
+      "uninstallDisplayName": "ChatFlow Messenger"
+    },
+    "files": [
+      "electron.js",
+      "preload.js",
+      "public/**/*",
+      "package.json"
+    ]
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mssql": "^10.0.4",
+    "multer": "^2.4.0",
+    "socket.io": "^4.7.2",
+    "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "chat",
+    "messenger",
+    "sqlserver",
+    "socketio",
+    "electron"
+  ],
+  "author": "Nazhad",
+  "license": "ISC",
+  "type": "commonjs"
+}
