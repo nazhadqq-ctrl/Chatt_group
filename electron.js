@@ -1,40 +1,45 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification } = require('electron');
+﻿const { app, BrowserWindow, Tray, Menu, shell } = require('electron');
 const path = require('path');
-const fs = require('fs');
-
-// Path to user config for saving server URL
-const userDataPath = app.getPath('userData');
-const configFilePath = path.join(userDataPath, 'chatflow-config.json');
-
-function getServerUrl() {
-  try {
-    if (fs.existsSync(configFilePath)) {
-      const data = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
-      if (data && data.serverUrl) return data.serverUrl;
-    }
-  } catch (err) {
-    console.error('Config read error:', err);
-  }
-  return 'http://62.201.232.190:3000';
-}
-
-function saveServerUrl(url) {
-  try {
-    fs.writeFileSync(configFilePath, JSON.stringify({ serverUrl: url }), 'utf8');
-  } catch (err) {
-    console.error('Config save error:', err);
-  }
-}
-
-// Single Instance Lock
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-}
+const http = require('http');
 
 let mainWindow = null;
 let tray = null;
-let localServerProcess = null;
+
+// Function to check if local server is listening
+function checkServer(port = 3000) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://localhost:${port}/`, (res) => {
+      resolve(true);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(800, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+// Function to start server in-process if not already running
+async function ensureServerRunning() {
+  const isRunning = await checkServer(3000);
+  if (!isRunning) {
+    console.log('Starting internal server...');
+    try {
+      require('./server.js');
+      // Wait up to 10 seconds for server to be responsive
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        const ready = await checkServer(3000);
+        if (ready) {
+          console.log('Server is ready on port 3000');
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('Error starting internal server:', err);
+    }
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -48,17 +53,17 @@ function createWindow() {
     show: false,
     icon: path.join(__dirname, 'public', 'icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       spellcheck: true
     }
   });
 
-  const serverUrl = getServerUrl();
-
-  // Try to load server URL
-  loadApp(serverUrl);
+  // Load the login screen directly from local server
+  mainWindow.loadURL('http://localhost:3000').catch((err) => {
+    console.error('Failed to load localhost:3000:', err);
+    mainWindow.loadFile(path.join(__dirname, 'public', 'index.html'));
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -81,71 +86,31 @@ function createWindow() {
   });
 }
 
-function loadApp(url) {
-  mainWindow.loadURL(url).catch((err) => {
-    console.log('Failed to load server URL, loading fallback screen:', err.message);
-    mainWindow.loadFile(path.join(__dirname, 'public', 'offline.html'));
-  });
-
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    if (validatedURL && !validatedURL.includes('offline.html')) {
-      console.log('Load failed:', errorCode, errorDescription);
-      mainWindow.loadFile(path.join(__dirname, 'public', 'offline.html'));
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
-}
 
-// IPC Handlers
-ipcMain.handle('get-server-url', () => {
-  return getServerUrl();
-});
+  app.whenReady().then(async () => {
+    await ensureServerRunning();
+    createWindow();
 
-ipcMain.handle('set-server-url', (event, url) => {
-  saveServerUrl(url);
-  loadApp(url);
-  return true;
-});
-
-ipcMain.handle('retry-connection', () => {
-  const url = getServerUrl();
-  loadApp(url);
-  return true;
-});
-
-ipcMain.handle('start-local-server', async () => {
-  try {
-    if (!localServerProcess) {
-      const { fork } = require('child_process');
-      const serverScript = path.join(__dirname, 'server.js');
-      localServerProcess = fork(serverScript, [], {
-        cwd: __dirname,
-        env: { ...process.env, PORT: '3000' }
-      });
-      // Wait 2 seconds for server to start
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    saveServerUrl('http://localhost:3000');
-    loadApp('http://localhost:3000');
-    return { success: true };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-});
-
-// App Lifecycle
-app.whenReady().then(() => {
-  createWindow();
-
-  // System Tray
-  try {
-    const iconPath = path.join(__dirname, 'public', 'icon.png');
-    if (fs.existsSync(iconPath)) {
+    // Tray
+    try {
+      const iconPath = path.join(__dirname, 'public', 'icon.png');
       tray = new Tray(iconPath);
       const contextMenu = Menu.buildFromTemplate([
-        { label: '???????? ChatFlow', click: () => { mainWindow.show(); mainWindow.focus(); } },
-        { label: '??????????? ?? ????????', click: () => { loadApp(getServerUrl()); } },
+        { label: 'کردنەوەی ChatFlow', click: () => { mainWindow.show(); mainWindow.focus(); } },
         { type: 'separator' },
-        { label: '??????? ?? ??????', click: () => { app.isQuitting = true; app.quit(); } }
+        { label: 'دەرچوون', click: () => { app.isQuitting = true; app.quit(); } }
       ]);
       tray.setToolTip('ChatFlow Messenger');
       tray.setContextMenu(contextMenu);
@@ -153,27 +118,16 @@ app.whenReady().then(() => {
         mainWindow.show();
         mainWindow.focus();
       });
+    } catch (err) {
+      console.log('Tray setup skipped:', err.message);
     }
-  } catch (err) {
-    console.error('Tray creation error:', err);
-  }
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
   });
-});
 
-app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-  }
-});
-
-app.on('before-quit', () => {
-  app.isQuitting = true;
-  if (localServerProcess) {
-    localServerProcess.kill();
-  }
-});
+  app.on('before-quit', () => {
+    app.isQuitting = true;
+  });
+}

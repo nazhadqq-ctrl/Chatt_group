@@ -30,6 +30,11 @@
     "files": [
       "electron.js",
       "preload.js",
+      "server.js",
+      ".env",
+      "db/**/*",
+      "middleware/**/*",
+      "routes/**/*",
       "public/**/*",
       "package.json"
     ]
